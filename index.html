@@ -57,10 +57,12 @@
     </a-scene>
 
     <script>
+      // 宣告一個變數用來偷記音樂播到哪裡（預設從第 0 秒開始）
+      let savedAudioTime = 0;
+
       function startAR() {
         document.getElementById('ar-button').style.display = 'none';
         
-        // 預先載入影音突破 iOS 限制
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
         video.load();
@@ -76,7 +78,7 @@
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
 
-        // 當辨識圖 1 出現時播放影片，消失時暫停
+        // 影片事件
         target1.addEventListener("targetFound", () => {
           video.play().catch(err => console.log("影片播放失敗:", err));
         });
@@ -84,13 +86,16 @@
           video.pause();
         });
 
-        // 當辨識圖 2 出現時播放聲音，消失時暫停
+        // 聲音事件（強制記憶與指定秒數）
         target2.addEventListener("targetFound", () => {
+          audio.currentTime = savedAudioTime; // 恢復上次記住的秒數
           audio.play().catch(err => console.log("聲音播放失敗:", err));
         });
+        
         target2.addEventListener("targetLost", () => {
+          savedAudioTime = audio.currentTime; // 在離開的瞬間，把當前秒數存起來！
           audio.pause();
-          //audio.currentTime = 0;
+          // audio.currentTime = 0; // 這行依然維持註解
         });
       });
     </script>
