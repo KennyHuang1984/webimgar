@@ -26,17 +26,32 @@
 
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
-    <!-- 注意看這裡：移除了 autoStart: false，改由按鈕直接呼叫 -->
-    <a-scene id="ar-scene" mindar-image="imageTargetSrc: targets.mind;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
+    <!-- 保持你原本成功讀取 targets.mind 的路徑寫法 -->
+    <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
       
       <a-assets>
         <a-asset-item id="myModel" src="office_chair.glb"></a-asset-item>
+        <video id="myVideo" src="NiuNiuVideo.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
+        <audio id="myAudio" src="JoyRide.mp3" preload="auto"></audio>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
+      <!-- 辨識圖 0：3D 模型 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-gltf-model src="#myModel" position="0 0 0" scale="0.5 0.5 0.5"></a-gltf-model>
+      </a-entity>
+
+      <!-- 辨識圖 1：影片 -->
+      <a-entity id="target-1" mindar-image-target="targetIndex: 1">
+        <a-video src="#myVideo" position="0 0 0" width="1" height="0.56" rotation="0 0 0"></a-video>
+      </a-entity>
+
+      <!-- 辨識圖 2：聲音 -->
+      <a-entity id="target-2" mindar-image-target="targetIndex: 2">
+        <a-plane color="black" opacity="0.6" width="1" height="0.3">
+          <a-text value="Playing Audio..." align="center" color="white" scale="0.5 0.5 0.5"></a-text>
+        </a-plane>
       </a-entity>
 
     </a-scene>
@@ -44,8 +59,40 @@
     <script>
       function startAR() {
         document.getElementById('ar-button').style.display = 'none';
-        console.log("使用者點擊了按鈕，準備啟動...");
+        
+        // 預先載入影音突破 iOS 限制
+        const video = document.querySelector('#myVideo');
+        const audio = document.querySelector('#myAudio');
+        video.load();
+        audio.load();
+
+        const sceneEl = document.querySelector('#ar-scene');
+        sceneEl.systems["mindar-image-system"].start();
       }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        const target1 = document.querySelector('#target-1');
+        const target2 = document.querySelector('#target-2');
+        const video = document.querySelector('#myVideo');
+        const audio = document.querySelector('#myAudio');
+
+        // 當辨識圖 1 出現時播放影片，消失時暫停
+        target1.addEventListener("targetFound", () => {
+          video.play().catch(err => console.log("影片播放失敗:", err));
+        });
+        target1.addEventListener("targetLost", () => {
+          video.pause();
+        });
+
+        // 當辨識圖 2 出現時播放聲音，消失時暫停
+        target2.addEventListener("targetFound", () => {
+          audio.play().catch(err => console.log("聲音播放失敗:", err));
+        });
+        target2.addEventListener("targetLost", () => {
+          audio.pause();
+          audio.currentTime = 0;
+        });
+      });
     </script>
   </body>
 </html>
