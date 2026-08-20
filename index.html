@@ -24,13 +24,13 @@
   </head>
   <body>
 
-    <!-- 點擊按鈕啟動 AR，同時解鎖 iOS 影音限制 -->
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
     <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
       
       <a-assets>
         <a-asset-item id="myModel" src="Office_Chair.glb"></a-asset-item>
+        <!-- 記得加上 playsinline 讓 iOS 影片正常運作 -->
         <video id="myVideo" src="NiuNiuVideo.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
         <audio id="myAudio" src="JoyRide.mp3" preload="auto"></audio>
       </a-assets>
@@ -38,11 +38,11 @@
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
       <!-- 辨識圖 0：3D 模型 -->
-      <a-entity id="target-0" mindar-image-target="targetIndex: 0">
+      <a-entity mindar-image-target="targetIndex: 0">
         <a-gltf-model src="#myModel" position="0 0 0" scale="0.5 0.5 0.5"></a-gltf-model>
       </a-entity>
 
-      <!-- 辨識圖 1：影片 -->
+      <!-- 辨識圖 1：影片（利用 visibility 自動控制播放與暫停） -->
       <a-entity id="target-1" mindar-image-target="targetIndex: 1">
         <a-video src="#myVideo" position="0 0 0" width="1" height="0.56" rotation="0 0 0"></a-video>
       </a-entity>
@@ -58,41 +58,39 @@
 
     <script>
       function startAR() {
-        // 1. 隱藏按鈕
         document.getElementById('ar-button').style.display = 'none';
         
-        // 2. 強制預先載入並播放/暫停一次影音（解鎖 iOS 限制）
+        // 預先載入影音突破 iOS 限制
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
         video.load();
         audio.load();
 
-        // 3. 啟動 MindAR 相機引擎
         const sceneEl = document.querySelector('#ar-scene');
         sceneEl.systems["mindar-image-system"].start();
       }
 
-      // 4. 設定正確的事件監聽（當圖片出現/消失時觸發）
       document.addEventListener("DOMContentLoaded", function() {
         const target1 = document.querySelector('#target-1');
         const target2 = document.querySelector('#target-2');
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
 
-        // 影片辨識圖事件
+        // 當辨識圖 1 出現時播放影片，消失時暫停
         target1.addEventListener("targetFound", () => {
-          video.play().catch(e => console.log("影片播放被阻擋:", e));
+          video.play().catch(err => console.log("影片播放失敗:", err));
         });
         target1.addEventListener("targetLost", () => {
           video.pause();
         });
 
-        // 聲音辨識圖事件
+        // 當辨識圖 2 出現時播放聲音，消失時暫停
         target2.addEventListener("targetFound", () => {
-          audio.play().catch(e => console.log("聲音播放被阻擋:", e));
+          audio.play().catch(err => console.log("聲音播放失敗:", err));
         });
         target2.addEventListener("targetLost", () => {
           audio.pause();
+          audio.currentTime = 0; // 重置聲音時間
         });
       });
     </script>
