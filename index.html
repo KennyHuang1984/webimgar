@@ -90,6 +90,7 @@
         });
         target2.addEventListener("targetLost", () => {
           audio.pause();
+          audio.currentTime = 0;
         });
       });
     </script>
