@@ -20,11 +20,26 @@
         font-weight: bold;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
       }
+      /* 畫面上的即時座標資訊面板 */
+      #info-panel {
+        position: fixed;
+        top: 15px;
+        left: 15px;
+        z-index: 999;
+        background: rgba(0, 0, 0, 0.75);
+        color: #00ffcc;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 15px;
+        pointer-events: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
     </style>
     
-    <!-- 專屬的手指旋轉控制元件（支援左右旋轉與上下傾斜） -->
+    <!-- 專為手指拖曳平移設計的元件 -->
     <script>
-      AFRAME.registerComponent('smooth-rotate', {
+      AFRAME.registerComponent('touch-drag-move', {
         init: function () {
           this.isDragging = false;
           this.previousX = 0;
@@ -55,10 +70,11 @@
             this.previousX = e.clientX;
             this.previousY = e.clientY;
             
-            let rotation = el.getAttribute('rotation');
-            rotation.y += deltaX * 0.5; // 左右滑動控制水平旋轉
-            rotation.x += deltaY * 0.5; // 上下滑動控制前後傾斜
-            el.setAttribute('rotation', rotation);
+            let pos = el.getAttribute('position');
+            // 調整係數 0.005 讓拖曳速度適中
+            pos.x += deltaX * 0.005;
+            pos.y -= deltaY * 0.005; // 螢幕向下為正，3D空間向上為正，所以用減號
+            el.setAttribute('position', pos);
           });
 
           window.addEventListener('touchmove', (e) => {
@@ -68,10 +84,10 @@
             this.previousX = e.touches[0].clientX;
             this.previousY = e.touches[0].clientY;
             
-            let rotation = el.getAttribute('rotation');
-            rotation.y += deltaX * 0.5; // 左右滑動控制水平旋轉
-            rotation.x += deltaY * 0.5; // 上下滑動控制前後傾斜
-            el.setAttribute('rotation', rotation);
+            let pos = el.getAttribute('position');
+            pos.x += deltaX * 0.005;
+            pos.y -= deltaY * 0.005;
+            el.setAttribute('position', pos);
           });
         }
       });
@@ -81,7 +97,9 @@
 
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
-    <!-- 加入濾波參數減少抖動 -->
+    <!-- 畫面上的即時座標顯示框 -->
+    <div id="info-panel">Position:<br>X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
+
     <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
       
       <a-assets>
@@ -92,10 +110,10 @@
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- 辨識圖 0：3D 模型（雙層結構：外層管位置/大小，內層管滑動旋轉） -->
+      <!-- 辨識圖 0：3D 模型（套用 touch-drag-move 與 id） -->
       <a-entity mindar-image-target="targetIndex: 0">
-        <a-entity position="0.5 -1.5 0" scale="0.05 0.05 0.05">
-          <a-gltf-model src="#myModel" rotation="0 0 0" smooth-rotate></a-gltf-model>
+        <a-entity id="chair-wrapper" position="0.5 -1.5 0" scale="0.05 0.05 0.05" touch-drag-move>
+          <a-gltf-model src="#myModel" rotation="0 0 0"></a-gltf-model>
         </a-entity>
       </a-entity>
 
@@ -133,6 +151,18 @@
         const target2 = document.querySelector('#target-2');
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
+        const chairWrapper = document.querySelector('#chair-wrapper');
+        const infoPanel = document.querySelector('#info-panel');
+
+        // 即時回報座標到畫面上
+        function updatePositionInfo() {
+          if (chairWrapper) {
+            const pos = chairWrapper.getAttribute('position');
+            infoPanel.innerHTML = `Position:<br>X: ${pos.x.toFixed(2)}<br>Y: ${pos.y.toFixed(2)}<br>Z: ${pos.z.toFixed(2)}`;
+          }
+          requestAnimationFrame(updatePositionInfo);
+        }
+        updatePositionInfo();
 
         // 影片事件
         target1.addEventListener("targetFound", () => {
