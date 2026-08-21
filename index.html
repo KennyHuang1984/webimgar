@@ -10,7 +10,7 @@
         bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        z-index: 999;
+        z-index: 99999;
         background: #007aff;
         color: white;
         padding: 14px 28px;
@@ -20,20 +20,20 @@
         font-weight: bold;
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
       }
-      /* 畫面上的即時座標資訊面板 */
+      /* 強制浮動在最上層的即時座標面板 */
       #info-panel {
         position: fixed;
-        top: 15px;
-        left: 15px;
-        z-index: 999;
-        background: rgba(0, 0, 0, 0.75);
+        top: 20px;
+        left: 20px;
+        z-index: 99999;
+        background: rgba(0, 0, 0, 0.85);
         color: #00ffcc;
-        padding: 12px 18px;
+        padding: 12px 16px;
         border-radius: 8px;
         font-family: monospace;
-        font-size: 15px;
+        font-size: 16px;
+        border: 2px solid #00ffcc;
         pointer-events: none;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
       }
     </style>
     
@@ -71,9 +71,8 @@
             this.previousY = e.clientY;
             
             let pos = el.getAttribute('position');
-            // 調整係數 0.005 讓拖曳速度適中
             pos.x += deltaX * 0.005;
-            pos.y -= deltaY * 0.005; // 螢幕向下為正，3D空間向上為正，所以用減號
+            pos.y -= deltaY * 0.005;
             el.setAttribute('position', pos);
           });
 
@@ -98,19 +97,19 @@
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
     <!-- 畫面上的即時座標顯示框 -->
-    <div id="info-panel">Position:<br>X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
+    <div id="info-panel">Position:<br>X: 0.50<br>Y: -1.50<br>Z: 0.00</div>
 
     <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
       
       <a-assets>
-        <a-asset-item id="myModel" src="office_chair.glb"></a-asset-item>
+        <a-asset-item id="myModel" src="Office_Chair.glb"></a-asset-item>
         <video id="myVideo" src="NiuNiuVideo.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
         <audio id="myAudio" src="JoyRide.mp3" preload="auto"></audio>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- 辨識圖 0：3D 模型（套用 touch-drag-move 與 id） -->
+      <!-- 辨識圖 0：3D 模型 -->
       <a-entity mindar-image-target="targetIndex: 0">
         <a-entity id="chair-wrapper" position="0.5 -1.5 0" scale="0.05 0.05 0.05" touch-drag-move>
           <a-gltf-model src="#myModel" rotation="0 0 0"></a-gltf-model>
@@ -144,6 +143,26 @@
 
         const sceneEl = document.querySelector('#ar-scene');
         sceneEl.systems["mindar-image-system"].start();
+
+        // 啟動即時座標更新迴圈
+        startTrackingPosition();
+      }
+
+      function startTrackingPosition() {
+        const chairWrapper = document.querySelector('#chair-wrapper');
+        const infoPanel = document.querySelector('#info-panel');
+
+        function update() {
+          if (chairWrapper) {
+            const pos = chairWrapper.getAttribute('position');
+            // 確保抓得到屬性才更新
+            if (pos) {
+              infoPanel.innerHTML = `Position:<br>X: ${pos.x.toFixed(2)}<br>Y: ${pos.y.toFixed(2)}<br>Z: ${pos.z.toFixed(2)}`;
+            }
+          }
+          requestAnimationFrame(update);
+        }
+        update();
       }
 
       document.addEventListener("DOMContentLoaded", function() {
@@ -151,18 +170,6 @@
         const target2 = document.querySelector('#target-2');
         const video = document.querySelector('#myVideo');
         const audio = document.querySelector('#myAudio');
-        const chairWrapper = document.querySelector('#chair-wrapper');
-        const infoPanel = document.querySelector('#info-panel');
-
-        // 即時回報座標到畫面上
-        function updatePositionInfo() {
-          if (chairWrapper) {
-            const pos = chairWrapper.getAttribute('position');
-            infoPanel.innerHTML = `Position:<br>X: ${pos.x.toFixed(2)}<br>Y: ${pos.y.toFixed(2)}<br>Z: ${pos.z.toFixed(2)}`;
-          }
-          requestAnimationFrame(updatePositionInfo);
-        }
-        updatePositionInfo();
 
         // 影片事件
         target1.addEventListener("targetFound", () => {
