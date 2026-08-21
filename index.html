@@ -4,8 +4,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- 引入手勢互動套件 -->
-    <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures/dist/arjs-gestures.js"></script>
     <style>
       #ar-button {
         position: fixed;
@@ -23,13 +21,60 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.4);
       }
     </style>
+    
+    <!-- 專屬的手指旋轉控制元件 -->
+    <script>
+      AFRAME.registerComponent('smooth-rotate', {
+        init: function () {
+          this.isDragging = false;
+          this.previousX = 0;
+          
+          const el = this.el;
+
+          // 監聽手指按下 / 滑鼠按下的瞬間
+          window.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.previousX = e.clientX;
+          });
+          window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+              this.isDragging = true;
+              this.previousX = e.touches[0].clientX;
+            }
+          });
+
+          // 監聽手指放開 / 滑鼠放開的瞬間
+          window.addEventListener('mouseup', () => { this.isDragging = false; });
+          window.addEventListener('touchend', () => { this.isDragging = false; });
+
+          // 監聽移動過程，計算滑動距離來轉動椅子
+          window.addEventListener('mousemove', (e) => {
+            if (!this.isDragging) return;
+            const deltaX = e.clientX - this.previousX;
+            this.previousX = e.clientX;
+            
+            let rotation = el.getAttribute('rotation');
+            rotation.y += deltaX * 0.5; // 調整 0.5 可以改變旋轉靈敏度
+            el.setAttribute('rotation', rotation);
+          });
+          window.addEventListener('touchmove', (e) => {
+            if (!this.isDragging || e.touches.length !== 1) return;
+            const deltaX = e.touches[0].clientX - this.previousX;
+            this.previousX = e.touches[0].clientX;
+            
+            let rotation = el.getAttribute('rotation');
+            rotation.y += deltaX * 0.5;
+            el.setAttribute('rotation', rotation);
+          });
+        }
+      });
+    </script>
   </head>
   <body>
 
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
-    <!-- 加入濾波參數減少抖動，並開啟 gesture-detector -->
-    <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true" gesture-detector>
+    <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
       
       <a-assets>
         <a-asset-item id="myModel" src="office_chair.glb"></a-asset-item>
@@ -37,17 +82,14 @@
         <audio id="myAudio" src="JoyRide.mp3" preload="auto"></audio>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false" raycaster="objects: [.clickable];" cursor="fuse: false; rayOrigin: mouse;"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- 辨識圖 0：3D 模型（加上 gesture-handler 讓使用者自由用手指拖曳、縮放、旋轉） -->
+      <!-- 辨識圖 0：3D 模型（雙層結構 + smooth-rotate 旋轉組件） -->
       <a-entity mindar-image-target="targetIndex: 0">
-        <a-gltf-model 
-          src="#myModel" 
-          position="0 0 0" 
-          scale="0.05 0.05 0.05" 
-          class="clickable" 
-          gesture-handler>
-        </a-gltf-model>
+        <a-entity position="0.5 -1.5 0" scale="0.05 0.05 0.05">
+          <!-- 加上 smooth-rotate，讓使用者在畫面任意處滑動手指就能轉動椅子，且位置絕對不亂跑！ -->
+          <a-gltf-model src="#myModel" rotation="0 0 0" smooth-rotate></a-gltf-model>
+        </a-entity>
       </a-entity>
 
       <!-- 辨識圖 1：影片 -->
@@ -101,7 +143,6 @@
         target2.addEventListener("targetLost", () => {
           savedAudioTime = audio.currentTime;
           audio.pause();
-          // audio.currentTime = 0; 
         });
       });
     </script>
