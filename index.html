@@ -4,6 +4,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <!-- 引入手勢互動套件 -->
+    <script src="https://cdn.jsdelivr.net/gh/fcor/arjs-gestures/dist/arjs-gestures.js"></script>
     <style>
       #ar-button {
         position: fixed;
@@ -26,25 +28,27 @@
 
     <button id="ar-button" onclick="startAR()">點擊開始 AR 體驗</button>
 
-    <!-- 保持你原本成功讀取 targets.mind 的路徑寫法 -->
-    <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; " color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
+    <!-- 加入濾波參數減少抖動，並開啟 gesture-detector -->
+    <a-scene id="ar-scene" mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001;" color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true" gesture-detector>
       
       <a-assets>
-        <a-asset-item id="myModel" src="office_chair.glb"></a-asset-item>
+        <a-asset-item id="myModel" src="Office_Chair.glb"></a-asset-item>
         <video id="myVideo" src="NiuNiuVideo.mp4" loop crossorigin="anonymous" playsinline webkit-playsinline></video>
         <audio id="myAudio" src="JoyRide.mp3" preload="auto"></audio>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera position="0 0 0" look-controls="enabled: false" raycaster="objects: [.clickable];" cursor="fuse: false; rayOrigin: mouse;"></a-camera>
 
-<!-- 辨識圖 0：3D 模型 -->
-<a-entity mindar-image-target="targetIndex: 0">
-  <!-- 外層：專門管位置與大小 -->
-  <a-entity position="2 -1.5 0" scale="0.03 0.03 0.03">
-    <!-- 內層：專門管旋轉（這裡可以安心轉 90 度，位置不會跑掉！） -->
-    <a-gltf-model src="#myModel" rotation="0 90 0" class="clickable" gesture-handler></a-gltf-model>
-  </a-entity>
-</a-entity>
+      <!-- 辨識圖 0：3D 模型（加上 gesture-handler 讓使用者自由用手指拖曳、縮放、旋轉） -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <a-gltf-model 
+          src="#myModel" 
+          position="0 0 0" 
+          scale="0.05 0.05 0.05" 
+          class="clickable" 
+          gesture-handler>
+        </a-gltf-model>
+      </a-entity>
 
       <!-- 辨識圖 1：影片 -->
       <a-entity id="target-1" mindar-image-target="targetIndex: 1">
@@ -61,7 +65,6 @@
     </a-scene>
 
     <script>
-      // 宣告一個變數用來偷記音樂播到哪裡（預設從第 0 秒開始）
       let savedAudioTime = 0;
 
       function startAR() {
@@ -90,16 +93,15 @@
           video.pause();
         });
 
-        // 聲音事件（強制記憶與指定秒數）
+        // 聲音事件（支援續播）
         target2.addEventListener("targetFound", () => {
-          audio.currentTime = savedAudioTime; // 恢復上次記住的秒數
+          audio.currentTime = savedAudioTime;
           audio.play().catch(err => console.log("聲音播放失敗:", err));
         });
-        
         target2.addEventListener("targetLost", () => {
-          savedAudioTime = audio.currentTime; // 在離開的瞬間，把當前秒數存起來！
+          savedAudioTime = audio.currentTime;
           audio.pause();
-          // audio.currentTime = 0; // 這行依然維持註解
+          // audio.currentTime = 0; 
         });
       });
     </script>
